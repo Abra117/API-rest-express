@@ -8,7 +8,8 @@ const inicioDebug = require('debug')('app:inicio') //Importamos el paquete debug
                                     //El parámetro indica el archivo y el entorno de depuración
                                     //
 const dbDebug = require('debug')('app:db');
-const usuarios = require('./routes/usuarios')
+const usuarios = require('./routes/usuarios') //Estamos  indicado una ruta
+const productos = require('./routes/productos') //Estamos indicado una ruta
 const express = require('express');//importa el paquete express
 const app = express(); //Crea una instancia de express
 const config = require('config'); //Importamos el modulo o paquete config
@@ -39,6 +40,8 @@ app.use('/api/usuarios',usuarios); //Middleware que importamos
 //El primer parámetro es la ruta raiz asociada  con las peticiones a los datos del usuarios
 //Con  las peticiones a los datos del usuario , la ruta raíz se va a concatenar  como prefijo al inicio
 //de todas las  rutas definidas  en el archivo usuarios.
+
+app.use('/api/productos',productos); //Indicamos que utlice la ruta
 
 console.log(`Aplicación: ${config.get('nombre')}`)
 console.log(`DB server: ${config.get('configDB.host')}`)
