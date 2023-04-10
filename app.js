@@ -7,7 +7,8 @@
 const inicioDebug = require('debug')('app:inicio') //Importamos el paquete debug
                                     //El parámetro indica el archivo y el entorno de depuración
                                     //
-const dbDebug = require('debug')('app:db')
+const dbDebug = require('debug')('app:db');
+const usuarios = require('./routes/usuarios')
 const express = require('express');//importa el paquete express
 const app = express(); //Crea una instancia de express
 const config = require('config'); //Importamos el modulo o paquete config
@@ -34,11 +35,18 @@ app.use(express.urlencoded({extended:true}));//nuevo middleware
                                           //serparar la información codificada en url
 app.use(express.static('public')); //Nombre de la carpeta que tendrá los archivos (recursos estaticos)
 
+app.use('/api/usuarios',usuarios); //Middleware que importamos
+//El primer parámetro es la ruta raiz asociada  con las peticiones a los datos del usuarios
+//Con  las peticiones a los datos del usuario , la ruta raíz se va a concatenar  como prefijo al inicio
+//de todas las  rutas definidas  en el archivo usuarios.
+
 console.log(`Aplicación: ${config.get('nombre')}`)
 console.log(`DB server: ${config.get('configDB.host')}`)
+
 //Hacemos que no se muestre en la consola  
 //EL trafico de las peticiones tiny cuando estemos 
 //En un entorno de desarrollo diferente a producción
+
 if(app.get('env')=== 'development'){
 app.use(morgan('tiny'))
 //console.log('Morgan Habilitado....')
@@ -57,156 +65,31 @@ app.use(function(req,res,next){
  */
 //los tres app.use() son middlewares y se llaman antes de las funciones
 //de ruta GET,POST,DELETE. Para que éstas puedan trabajar
-const usuarios = [
-    {id:1 ,nombre:'Jorge'},
-    {id:2,nombre:'Ana'},
-    {id:3,nombre:'karen'},
-    {id:4,nombre:'Luis'}
-];
 
-function existeUsuario(id){
-   return  usuarios.find(u => u.id === parseInt(id));    
-}
 
-function validarUsuario(nom){
-    const schema = joi.object({
-        nombre: joi.string()
-            .min(3)
-            .required()
-    })
-  return  schema.validate({nombre:nom}) ; //devolvemos el resultado de la validación
-}
 //Consulta en la ruta Raiz del sitio 
 
 //Toda petición siempre va a recibir dos parámetros
 //req: lo que recibe el servidor de  parte del cliente
 //res:La información que el servidor va ha respoder
 // Vamos a utilizar el método send del objeto res
-app.get('/',(req,res)=>{
-      res.send('Hola mundo desde Express!!!')
-});
-app.get('/api/usuarios',(req,res)=>{
-    res.send(usuarios);
-});
-//Con los : delante del id
-//Express sabe que es un parámetro a recibir en la ruta
-app.get('/api/usuarios/:id',(req,res)=>{
-      //En el  cuerpo del objeto  req  está la propiedad
-      //params, que nos guarda los parámetros enviados.
-      //Los parametros en req,params se reciben como string
-      const id = req.params.id;
-    let  usuario = validarUsuario(id);
-     if(!usuario){
-        res.status(400).send(`El usuario ${id} no se encuentra !`)
-        //Devuelve el estado HTTP 404
-        return ;
-     }
-      else{
-      res.send(usuario);
-     return;  
-    }
-});
+//app.get('/',(req,res)=>{
+//      res.send('Hola mundo desde Express!!!')
+//});
+
+
 
 //Recibiendo varios parámetros
 //Se pasan dos parámetros year  y month
 //Query string
 //localhost:5000/api/usuarios/1990/2/?nombre=xxxx&single=y
-app.get('/api/usuarios/:year/:month',(req,res)=>{
+//app.get('/api/usuarios/:year/:month',(req,res)=>{
        //En el cuerpo de req está la propiedad Query
        //Query, guarda los  prámetros query string
-       res.send(req.query)
-});
+  //     res.send(req.query)
+//});
 
-//La ruta tiene el mismo nombre que la petición GET
-//Express hace la diferencia dependiendo del tipo de 
-//Petición
-//La petición POST la vamos a utilizar para insertar
-//un nuevo usuario en el arreglo
-app.post('/api/usuarios',(req,res)=>{
-    //El objeto  request tiene la propiedad body
-    //que va ha venir en formato JSON
-    //Creación del  schema con Joi
 
-    const schema = joi.object({
-        nombre:joi.string() //Decimos que va ingresar una string
-                   .min(3)  // Con un longitud minima de 3 caracteres
-                   .required() //Decimos que es obligatorio lo anterior
-
-    });
-//Validamos los datos propocinados por el usuario
-    const {error,value} = schema.validate({nombre:req.body.nombre}); 
-//Estamos  haciendo una destructuración de los objetos de schema
-if(!error) {
-    const  usuario = {
-        id: usuarios.length + 1,
-        nombre : req.body.nombre   
-      };
-      usuarios.push(usuario);
-      res.send(usuario);
-}else{
-    const mensaje = error.details[0].message //como extraimos  el objeto error podemos recorrerlo
-    res.status(400).send(mensaje); 
-}  
-    return;
-    /*
-    if(!req.body.nombre || req.body.nombre.length <=2){
-         //Código 400 : Bad request
-        res.status(400).send('Debe Ingresar un nombre que tenga almenps 3 letras');
-        return;//Es necesario para que no continúe con el método
-    }
-    
-   const  usuario = {
-          id: usuarios.length + 1,
-          nombre : req.body.nombre   
-        };
-        usuarios.push(usuario);
-        res.send(usuario);
-        */
-});
-
-//petición para modificar los datos existentes
-//este método debe recibir un parámetro 
-//id para saber qué usuario modificar
-app.put('/api/usuarios/:id',(req,res)=>{ 
-   //encontrar si existe el usuario a modificar
-   //parseInt , hace el casteo a valores enteros directamente
-    let usuario = existeUsuario(req.params.id)
-   if(!usuario){
-    res.status(404).send('El usuario no se encuentra');//Devuelve el estado a HTTP
-    return;
-   }else
-   {
-    //validar si el dato recibo es correcto
-
-    const {error, value} = validarUsuario(req.body.nombre);
-    if(!error){
-        //Asignamos el valor que contenga value al nombre de nuestro objeto const usuario
-        usuario.nombre = value.nombre;
-        //Respuesta ante la petición
-        res.send(usuario);
-    }else{
-        const mensaje = error.details[0].message;
-        res.status(400).send(mensaje);
-    }
-   }
-   return
-});
-//Recibe como parámetros el id del usuario
-//que se va ha eliminar
-
-app.delete('/api/usuarios/:id',(req,res)=>{
-    const usuario = existeUsuario(req.params.id);
-    if(!usuario)
-    {
-        res.status(400).send('El usuario no se encuentra')//Devuelve el estado HTTP
-        return;
-    }
-    //Encontrar el índice del usuario dentro del arreglo
-   const index = usuarios.indexOf(usuario);
-   usuarios.splice(index,1); //elimina el usuario en el índice
-   res.send(usuario); //se responde con el usuario eliminado
-   return ;
-})
 
 //El modulo proces, contiene información del sistema
 //el objeto env contiene información de las variables de entorno
@@ -278,8 +161,13 @@ app.listen(port, ()=>{
 /*
   Tenemos tres  lugares en git 
         -Nuestra área de trabajo
-        -Olimpo
-        -La final
+        -Olimpo ->   
+        -La final -> Ya subimos los archivos y cambios a git
 
-        cuando hacemos un add . mandamos todo al olimpo 
+        git add .  -> mandamos todo al olimpo donde le daremos seguimiento
+        git status -> Nos sirve para ver los elementos que se modificaron
+        git commit -> Los archivos ya estan en el repositorio local luego del commit
+        git remote add origin  rutadeconexion API-rest-express.git -> conectamos con nuestro repositorio remoto
+        git push -> lo subimos a nuestro repositorio
+
 */
